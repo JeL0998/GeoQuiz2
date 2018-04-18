@@ -197,7 +197,8 @@ public class QuizActivity extends AppCompatActivity {
             score --;
         }
         if (questionsAnswered == 6){
-            String messageScore = String.format("Your score is %d out of 6, restart game to play again", score);
+            int score_percentage = (score*100)/6;
+            String messageScore = String.format("Your score is %d %%, restart game to play again", score_percentage);
             Toast toast = Toast.makeText(QuizActivity.this, messageScore, Toast.LENGTH_SHORT);
             toast.show();
             toast.setGravity(Gravity.TOP, 0, 300);
