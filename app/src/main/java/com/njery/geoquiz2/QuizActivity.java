@@ -1,5 +1,7 @@
 package com.njery.geoquiz2;
 
+import android.app.Activity;
+import android.content.Intent;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
@@ -14,9 +16,12 @@ import java.lang.Math;
 public class QuizActivity extends AppCompatActivity {
     private static final String TAG = "QuizActivity";
     private static final String KEY_INDEX = "index";
+    private static final String KEY_CHEAT = "cheat";
+    private static final int REQUEST_CODE_CHEAT = 0;
     private boolean btnEnabled;
     private Button mTrueBtn;
     private Button mFalseBtn;
+    private Button mCheatButton;
     private ImageButton mNextButton;
     private ImageButton mPrevButton;
     private TextView mQuestionTextView;
@@ -35,6 +40,7 @@ public class QuizActivity extends AppCompatActivity {
     };
 
     private int mCurrentIndex = 0;
+    private boolean mIsCheater;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -44,6 +50,7 @@ public class QuizActivity extends AppCompatActivity {
 
         if (savedInstanceState != null){
             mCurrentIndex = savedInstanceState.getInt(KEY_INDEX, 0);
+            mIsCheater = savedInstanceState.getBoolean(KEY_CHEAT);
         }
         mQuestionTextView = (TextView) findViewById(R.id.question_text_view);
         updateQuestion();
@@ -65,11 +72,22 @@ public class QuizActivity extends AppCompatActivity {
             }
         });
 
+        mCheatButton = (Button) findViewById(R.id.cheat_button);
+        mCheatButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                boolean answerIsTrue = mQuestionBank[mCurrentIndex].isAnswerTrue();
+                Intent intent = CheatActivity.newIntent(QuizActivity.this, answerIsTrue);
+                startActivityForResult(intent, REQUEST_CODE_CHEAT);
+            }
+        });
+
         mNextButton = (ImageButton) findViewById(R.id.next_button);
         mNextButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 mCurrentIndex = (mCurrentIndex + 1) % mQuestionBank.length;
+                mIsCheater = false;
                 btnEnabled = mQuestionBank[mCurrentIndex].getButtonEnabled();
                 if (!btnEnabled){
                     mFalseBtn.setEnabled(false);
@@ -140,6 +158,18 @@ public class QuizActivity extends AppCompatActivity {
         });
 
     }
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data){
+        if (resultCode != Activity.RESULT_OK){
+            return;
+        }
+        if (requestCode == REQUEST_CODE_CHEAT){
+            if (data == null){
+                return;
+            }
+            mIsCheater = CheatActivity.wasAnswerShown(data);
+        }
+    }
 
     @Override
     public void onStart(){
@@ -164,6 +194,7 @@ public class QuizActivity extends AppCompatActivity {
         super.onSaveInstanceState(savedInstanceState);
         Log.i(TAG, "onSaveInstanceState");
         savedInstanceState.putInt(KEY_INDEX, mCurrentIndex);
+        savedInstanceState.putBoolean(KEY_CHEAT, mIsCheater);
     }
     @Override
     public void onStop(){
@@ -188,14 +219,22 @@ public class QuizActivity extends AppCompatActivity {
         questionsAnswered ++;
         score ++;
         int messageResId = 0;
-
-        if (userPressedTrue == answerIsTrue){
-            messageResId = R.string.correct_toast;
+        if (mIsCheater){
+            messageResId = R.string.judgment_toast;
+            if (userPressedTrue == answerIsTrue){
+                score --;
+            }
         }
         else{
-            messageResId = R.string.incorrect_toast;
-            score --;
+            if (userPressedTrue == answerIsTrue){
+                messageResId = R.string.correct_toast;
+            }
+            else{
+                messageResId = R.string.incorrect_toast;
+                score --;
+            }
         }
+
         if (questionsAnswered == 6){
             int score_percentage = (score*100)/6;
             String messageScore = String.format("Your score is %d %%, restart game to play again", score_percentage);
@@ -210,6 +249,6 @@ public class QuizActivity extends AppCompatActivity {
         toast.setGravity(Gravity.TOP, 0, 300);
         mFalseBtn.setEnabled(false);
         mTrueBtn.setEnabled(false);
-
     }
 }
+
